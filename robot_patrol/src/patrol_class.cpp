@@ -1,17 +1,11 @@
 #include "robot_patrol/patrol_class.h"
 
 Patrol::Patrol() : Node("robot_patrol_node") {
-    // Initialize callback groups
-    scan_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-    control_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
     // Subscription to LaserScan topic
-    rclcpp::SubscriptionOptions scan_options;
-    scan_options.callback_group = scan_callback_group_;
     lidar_subscriber_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
         "/scan", 10,
-        std::bind(&Patrol::laserCallback, this, std::placeholders::_1),
-        scan_options);
+        std::bind(&Patrol::laserCallback, this, std::placeholders::_1));
 
     // Publisher for velocity commands
     cmd_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
@@ -19,11 +13,8 @@ Patrol::Patrol() : Node("robot_patrol_node") {
     // Timer for robot control
     control_timer_ = this->create_wall_timer(
         std::chrono::milliseconds(100),
-        std::bind(&Patrol::robotControl, this),
-        control_callback_group_);
+        std::bind(&Patrol::robotControl, this));
 
-    // Node acknowledgment
-    RCLCPP_INFO(this->get_logger(), "The robot_patrol_node started successfully");
 }
 
 void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -31,34 +22,34 @@ void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
     auto front_start = msg->ranges.begin() + 180;
     auto front_end = msg->ranges.begin() + 540 + 1;
 
-    std::vector<float> front_ranges(front_end - front_start + 1);
-    std::copy(front_start, front_end, front_ranges.begin());
+    std::vector<float> lidar_scan_of_the_front_only(front_end - front_start + 1);
+    std::copy(front_start, front_end, lidar_scan_of_the_front_only.begin());
 
     // Extract distances
-    left_distance_ = front_ranges[360];   // Left side
-    center_distance_ = front_ranges[180]; // Center
-    right_distance_ = front_ranges[0];    // Right side
+    left_distance_ = lidar_scan_of_the_front_only[360];   // Left side
+    front_distance_ = lidar_scan_of_the_front_only[180]; // Infront
+    right_distance_ = lidar_scan_of_the_front_only[0];    // Right side
 
-    // Find minimum distance in a specific range (78 to 102 indices)
-    auto min_start = front_ranges.begin() + 156; // Start index
-    auto min_end = front_ranges.begin() + 204;   // End index
-    auto min_element_iter = std::min_element(min_start, min_end);
-    min_distance_ = *min_element_iter;
+    // Narrow FOV
+    auto FOV_first_i = lidar_scan_of_the_front_only.begin() + 156; // Start index
+    auto FOV_last_i = lidar_scan_of_the_front_only.begin() + 204;   // End index
+    auto FOV_obstacle = std::min_element(FOV_first_i, FOV_last_i);
+    min_distance_ = *FOV_obstacle;
 
     // Replace infinity values with zero
-    std::replace(front_ranges.begin(), front_ranges.end(),
+    std::replace(lidar_scan_of_the_front_only.begin(), lidar_scan_of_the_front_only.end(),
                  std::numeric_limits<double>::infinity(), 0.0);
 
     // Find maximum value and its position
-    auto max_element_iter = std::max_element(front_ranges.begin(), front_ranges.end());
-    auto max_index = std::distance(front_ranges.begin(), max_element_iter);
+    auto max_element_iter = std::max_element(lidar_scan_of_the_front_only.begin(), lidar_scan_of_the_front_only.end());
+    auto max_index = std::distance(lidar_scan_of_the_front_only.begin(), max_element_iter);
 
     // Calculate steering angle
     direction_ = (M_PI / 180) * ((max_index - 180) / 2);
 
     // Log feedback
-    // RCLCPP_INFO(this->get_logger(), "LaserScan (Left: %f, Center: %f, Right: %f)", left_distance_, center_distance_, right_distance_);
-    // RCLCPP_INFO(this->get_logger(), "MaxElement (Index: %ld, Value: %f), Steering Angle: %d", max_index, *max_element_iter, direction_);
+    RCLCPP_INFO(this->get_logger(), "LaserScan (Left: %f, Center: %f, Right: %f)", left_distance_, front_distance_, right_distance_);
+    RCLCPP_INFO(this->get_logger(), "MaxElement (Index: %ld, Value: %f), Steering Angle: %f", max_index, *max_element_iter, direction_);
 }
 
 void Patrol::robotControl() {
@@ -74,7 +65,7 @@ void Patrol::robotControl() {
     }
 
     // Log feedback
-    // RCLCPP_INFO(this->get_logger(), "Velocity (Linear: %f, Angular: %f)", velocity_msg.linear.x, velocity_msg.angular.z);
+    RCLCPP_INFO(this->get_logger(), "Velocity (Linear: %f, Angular: %f)", velocity_msg.linear.x, velocity_msg.angular.z);
 
     // Publish velocity
     cmd_publisher_->publish(velocity_msg);

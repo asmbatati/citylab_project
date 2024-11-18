@@ -28,8 +28,25 @@ endif()
 
 ament_package()
 
-add_executable(patrol src/patrol.cpp src/patrol_class.cpp)
-ament_target_dependencies(patrol rclcpp sensor_msgs geometry_msgs)
+# Add the patrol_class library
+add_library(patrol_class src/patrol_class.cpp)
+
+# Link the required libraries to patrol_class
+ament_target_dependencies(patrol_class
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+)
+
+# Add the patrol executable
+add_executable(patrol src/patrol.cpp)
+
+# Link the patrol_class library to the executable
+target_link_libraries(patrol patrol_class)
+
+# add_executable(patrol src/patrol.cpp src/patrol_class.cpp)
+# ament_target_dependencies(patrol rclcpp sensor_msgs geometry_msgs)
+
 install(TARGETS patrol
     DESTINATION lib/${PROJECT_NAME})
 

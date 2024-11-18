@@ -13,17 +13,16 @@
 #define LINEAR_SPEED 0.1   // Linear velocity of the robot
 
 class Patrol : public rclcpp::Node {
+public:
+    // Constructor
+    Patrol();
 private:
     // Member variables
     float direction_;
     float left_distance_;
-    float center_distance_;
+    float front_distance_;
     float right_distance_;
     float min_distance_;
-
-    // Callback groups
-    rclcpp::CallbackGroup::SharedPtr scan_callback_group_;
-    rclcpp::CallbackGroup::SharedPtr control_callback_group_;
 
     // ROS objects
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscriber_;
@@ -33,10 +32,6 @@ private:
     // Member methods
     void laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
     void robotControl();
-
-public:
-    // Constructor
-    Patrol();
 };
 
-#endif // PATROL_HPP
+#endif
