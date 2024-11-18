@@ -54,11 +54,11 @@ void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
     auto max_index = std::distance(front_ranges.begin(), max_element_iter);
 
     // Calculate steering angle
-    steering_angle_ = (max_index - 180) / 2;
+    direction_ = (M_PI / 180) * ((max_index - 180) / 2);
 
     // Log feedback
     // RCLCPP_INFO(this->get_logger(), "LaserScan (Left: %f, Center: %f, Right: %f)", left_distance_, center_distance_, right_distance_);
-    // RCLCPP_INFO(this->get_logger(), "MaxElement (Index: %ld, Value: %f), Steering Angle: %d", max_index, *max_element_iter, steering_angle_);
+    // RCLCPP_INFO(this->get_logger(), "MaxElement (Index: %ld, Value: %f), Steering Angle: %d", max_index, *max_element_iter, direction_);
 }
 
 void Patrol::robotControl() {
@@ -67,7 +67,7 @@ void Patrol::robotControl() {
     // Robot control logic
     if (min_distance_ < SAFE_DISTANCE) {
         velocity_msg.linear.x = 0.0; // Stop
-        velocity_msg.angular.z = ((M_PI / 180) * steering_angle_) / 2; // Rotate
+        velocity_msg.angular.z = direction_ / 2; // Rotate
     } else {
         velocity_msg.linear.x = LINEAR_SPEED; // Move forward
         velocity_msg.angular.z = 0.0;         // No rotation

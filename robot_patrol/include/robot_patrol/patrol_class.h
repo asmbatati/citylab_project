@@ -9,13 +9,13 @@
 #include <cmath>
 #include <limits>
 
-#define SAFE_DISTANCE 0.5  // Safety threshold for minimum distance
-#define LINEAR_SPEED 0.2   // Linear velocity of the robot
+#define SAFE_DISTANCE 0.35  // Safety threshold for minimum distance
+#define LINEAR_SPEED 0.1   // Linear velocity of the robot
 
 class Patrol : public rclcpp::Node {
 private:
     // Member variables
-    int steering_angle_;
+    float direction_;
     float left_distance_;
     float center_distance_;
     float right_distance_;
