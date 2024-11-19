@@ -17,6 +17,7 @@ public:
     // Constructor
     Patrol();
     void stop();
+
 private:
     // Member variables
     float direction_;
@@ -24,6 +25,7 @@ private:
     float front_distance_;
     float right_distance_;
     float min_distance_;
+    
 
     // ROS objects
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscriber_;

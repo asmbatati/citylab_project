@@ -5,16 +5,24 @@ int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
 
-    // Create and spin the Patrol node
+    // Create the Patrol node
     auto node = std::make_shared<Patrol>();
     RCLCPP_INFO(node->get_logger(), "Node started. Spinning...");
-    rclcpp::spin(node);
 
-    // Explicitly trigger the stop method
-    RCLCPP_INFO(node->get_logger(), "Stopping the node and cleaning up...");
-    node->stop();
+    try {
+        // Spin the node and handle callbacks
+        rclcpp::spin(node);
+    } catch (const std::exception &e) {
+        // Handle any runtime exceptions
+        RCLCPP_ERROR(node->get_logger(), "Exception caught: %s", e.what());
+        RCLCPP_INFO(node->get_logger(), "Stopping the robot due to exception...");
+        node->stop();
+    } catch (...) {
+        RCLCPP_ERROR(node->get_logger(), "Unknown exception caught!");
+        RCLCPP_INFO(node->get_logger(), "Stopping the robot due to unknown exception...");
+        node->stop();
+    }
 
-    // Shutdown ROS 2
     rclcpp::shutdown();
     return 0;
 }

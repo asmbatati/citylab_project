@@ -13,57 +13,65 @@ Patrol::Patrol() : Node("robot_patrol_node") {
 }
 
 void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
-    // Slice required vector from LaserScan ranges
-    auto front_start = msg->ranges.begin() + 180;
-    auto front_end = msg->ranges.begin() + 540 + 1;
 
-    std::vector<float> lidar_scan_of_the_front_only(front_end - front_start + 1);
-    std::copy(front_start, front_end, lidar_scan_of_the_front_only.begin());
+    // Calculate the indices for the front FOV (-90° to +90°)
+    int front_start_index = static_cast<int>((-M_PI / 2 - msg->angle_min) / msg->angle_increment); // -90°
+    int front_end_index = static_cast<int>((M_PI / 2 - msg->angle_min) / msg->angle_increment);   // +90°
 
-    // Extract distances
-    left_distance_ = lidar_scan_of_the_front_only[360];   // Left side
-    front_distance_ = lidar_scan_of_the_front_only[180]; // Infront
-    right_distance_ = lidar_scan_of_the_front_only[0];    // Right side
-
-    // Narrow FOV
-    auto FOV_first_i = lidar_scan_of_the_front_only.begin() + 156; // Start index
-    auto FOV_last_i = lidar_scan_of_the_front_only.begin() + 204;   // End index
-    auto FOV_obstacle = std::min_element(FOV_first_i, FOV_last_i);
-    min_distance_ = *FOV_obstacle;
+    // Slice the required vector from LaserScan ranges
+    std::vector<float> lidar_scan_of_the_front_only(
+        msg->ranges.begin() + front_start_index,
+        msg->ranges.begin() + front_end_index + 1
+    );
 
     // Replace infinity values with zero
     std::replace(lidar_scan_of_the_front_only.begin(), lidar_scan_of_the_front_only.end(),
-                 std::numeric_limits<double>::infinity(), 0.0);
+                 std::numeric_limits<float>::infinity(), 0.0f);
 
-    // Find maximum value and its position
+    // Extract distances for left, front, and right (adjusting indices based on vector size)
+    int left_index = static_cast<int>(lidar_scan_of_the_front_only.size() * 3 / 4);   // Left
+    int front_index = static_cast<int>(lidar_scan_of_the_front_only.size() / 2);      // Front
+    int right_index = static_cast<int>(lidar_scan_of_the_front_only.size() / 4);      // Right
+
+    left_distance_ = lidar_scan_of_the_front_only[left_index];
+    front_distance_ = lidar_scan_of_the_front_only[front_index];
+    right_distance_ = lidar_scan_of_the_front_only[right_index];
+
+    // Narrow FOV (-15° to +15° relative to front)
+    int FOV_start_index = static_cast<int>((-M_PI / 9 - (-M_PI / 2)) / msg->angle_increment); // -20°
+    int FOV_end_index = static_cast<int>((M_PI / 9 - (-M_PI / 2)) / msg->angle_increment);   // +20°
+
+    auto FOV_first_i = lidar_scan_of_the_front_only.begin() + FOV_start_index;
+    auto FOV_last_i = lidar_scan_of_the_front_only.begin() + FOV_end_index + 1;
+    auto FOV_obstacle = std::min_element(FOV_first_i, FOV_last_i);
+    min_distance_ = *FOV_obstacle;
+
+    // Find maximum value and its position for steering
     auto max_element_iter = std::max_element(lidar_scan_of_the_front_only.begin(), lidar_scan_of_the_front_only.end());
     auto max_index = std::distance(lidar_scan_of_the_front_only.begin(), max_element_iter);
 
-    // Calculate steering angle
-    direction_ = (M_PI / 180) * ((max_index - 180) / 2);
+    // Calculate steering angle relative to front
+    direction_ = msg->angle_min + front_start_index * msg->angle_increment + max_index * msg->angle_increment;
 
-    // Log feedback
-    // RCLCPP_INFO(this->get_logger(), "LaserScan (Left: %f, Center: %f, Right: %f)", left_distance_, front_distance_, right_distance_);
-    // RCLCPP_INFO(this->get_logger(), "MaxElement (Index: %ld, Value: %f), Steering Angle: %f", max_index, *max_element_iter, direction_);
+    // Debug information
+    RCLCPP_INFO(this->get_logger(), "Left: %f, Front: %f, Right: %f, Min: %f, Direction: %f", left_distance_, front_distance_, right_distance_, min_distance_, direction_);
 
+    // Send velocity commands
     auto velocity_msg = geometry_msgs::msg::Twist();
+    velocity_msg.linear.x = LINEAR_SPEED;
     if (min_distance_ < SAFE_DISTANCE) {
-        velocity_msg.linear.x = 0.0; // Stop
-        velocity_msg.angular.z = direction_ / 2; // Rotate
+        velocity_msg.angular.z = direction_ / 2;
     } else {
-        velocity_msg.linear.x = LINEAR_SPEED; // Move forward
-        velocity_msg.angular.z = 0.0;         // No rotation
+        velocity_msg.angular.z = 0.0;
     }
     cmd_publisher_->publish(velocity_msg);
 }
 
 void Patrol::stop() {
-
-    // Create a stop command
-    auto stop_msg = geometry_msgs::msg::Twist();
-    stop_msg.linear.x = 0.0;
-    stop_msg.angular.z = 0.0;
-    cmd_publisher_->publish(stop_msg);
+    auto velocity_msg = geometry_msgs::msg::Twist();
+    velocity_msg.linear.x = 0.0;
+    velocity_msg.angular.z = 0.0;
+    cmd_publisher_->publish(velocity_msg);
 
     RCLCPP_INFO(this->get_logger(), "Stop command sent.");
 }
