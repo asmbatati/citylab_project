@@ -16,6 +16,8 @@ class Patrol : public rclcpp::Node {
 public:
     // Constructor
     Patrol();
+    ~Patrol();  // Destructor to send stop command
+    void publish_stop_command();
 private:
     // Member variables
     float direction_;

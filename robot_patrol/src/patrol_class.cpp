@@ -17,6 +17,35 @@ Patrol::Patrol() : Node("robot_patrol_node") {
 
 }
 
+Patrol::~Patrol() {
+    RCLCPP_INFO(this->get_logger(), "Destructor called. Cleaning up...");
+    publish_stop_command();  // Call the refined method
+    RCLCPP_INFO(this->get_logger(), "Robot stopped as patrol node shut down.");
+}
+
+void Patrol::publish_stop_command() {
+    // Ensure the control timer is canceled
+    if (control_timer_) {
+        control_timer_->cancel();
+        RCLCPP_INFO(this->get_logger(), "Control timer canceled.");
+    }
+
+    // Create a stop command
+    auto stop_msg = geometry_msgs::msg::Twist();
+    stop_msg.linear.x = 0.0;
+    stop_msg.angular.z = 0.0;
+
+    // Publish the stop command multiple times to ensure the robot halts
+    RCLCPP_INFO(this->get_logger(), "Publishing stop command...");
+    for (int i = 0; i < 20; ++i) {  // Publish for 2 seconds
+        cmd_publisher_->publish(stop_msg);
+        rclcpp::spin_some(this->get_node_base_interface());  // Process any pending callbacks
+        rclcpp::sleep_for(std::chrono::milliseconds(100));   // Wait between commands
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Stop command sent.");
+}
+
 void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
     // Slice required vector from LaserScan ranges
     auto front_start = msg->ranges.begin() + 180;
@@ -52,10 +81,32 @@ void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
     RCLCPP_INFO(this->get_logger(), "MaxElement (Index: %ld, Value: %f), Steering Angle: %f", max_index, *max_element_iter, direction_);
 }
 
-void Patrol::robotControl() {
-    auto velocity_msg = geometry_msgs::msg::Twist();
+// void Patrol::robotControl() {
+//     auto velocity_msg = geometry_msgs::msg::Twist();
 
-    // Robot control logic
+//     // Robot control logic
+//     if (min_distance_ < SAFE_DISTANCE) {
+//         velocity_msg.linear.x = 0.0; // Stop
+//         velocity_msg.angular.z = direction_ / 2; // Rotate
+//     } else {
+//         velocity_msg.linear.x = LINEAR_SPEED; // Move forward
+//         velocity_msg.angular.z = 0.0;         // No rotation
+//     }
+
+//     // Log feedback
+//     RCLCPP_INFO(this->get_logger(), "Velocity (Linear: %f, Angular: %f)", velocity_msg.linear.x, velocity_msg.angular.z);
+
+//     // Publish velocity
+//     cmd_publisher_->publish(velocity_msg);
+// }
+void Patrol::robotControl() {
+    if (!rclcpp::ok()) {
+        RCLCPP_INFO(this->get_logger(), "ROS is shutting down. Skipping robot control.");
+        return;
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Running robot control loop...");
+    auto velocity_msg = geometry_msgs::msg::Twist();
     if (min_distance_ < SAFE_DISTANCE) {
         velocity_msg.linear.x = 0.0; // Stop
         velocity_msg.angular.z = direction_ / 2; // Rotate
@@ -63,10 +114,5 @@ void Patrol::robotControl() {
         velocity_msg.linear.x = LINEAR_SPEED; // Move forward
         velocity_msg.angular.z = 0.0;         // No rotation
     }
-
-    // Log feedback
-    RCLCPP_INFO(this->get_logger(), "Velocity (Linear: %f, Angular: %f)", velocity_msg.linear.x, velocity_msg.angular.z);
-
-    // Publish velocity
     cmd_publisher_->publish(velocity_msg);
 }
