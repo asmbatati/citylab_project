@@ -16,8 +16,7 @@ class Patrol : public rclcpp::Node {
 public:
     // Constructor
     Patrol();
-    ~Patrol();  // Destructor to send stop command
-    void publish_stop_command();
+    void stop();
 private:
     // Member variables
     float direction_;
@@ -29,11 +28,9 @@ private:
     // ROS objects
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_subscriber_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_publisher_;
-    rclcpp::TimerBase::SharedPtr control_timer_;
 
     // Member methods
     void laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg);
-    void robotControl();
 };
 
 #endif

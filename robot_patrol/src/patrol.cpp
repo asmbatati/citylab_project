@@ -10,9 +10,9 @@ int main(int argc, char **argv)
     RCLCPP_INFO(node->get_logger(), "Node started. Spinning...");
     rclcpp::spin(node);
 
-    // Explicitly trigger the destructor
+    // Explicitly trigger the stop method
     RCLCPP_INFO(node->get_logger(), "Stopping the node and cleaning up...");
-    node.reset();
+    node->stop();
 
     // Shutdown ROS 2
     rclcpp::shutdown();
