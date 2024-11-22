@@ -68,7 +68,7 @@ void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
 
     // Send velocity commands
     velocity_msg.linear.x = LINEAR_SPEED;
-    velocity_msg.angular.z = direction_;
+    velocity_msg.angular.z = direction_/2;
     cmd_publisher_->publish(velocity_msg);
 }
 
