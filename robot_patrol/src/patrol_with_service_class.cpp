@@ -1,4 +1,4 @@
-#include "robot_patrol/patrol_class.h"
+#include "robot_patrol/patrol_with_service_class.h"
 
 Patrol::Patrol() : Node("robot_patrol_node") {
 
