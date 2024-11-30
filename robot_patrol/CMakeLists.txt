@@ -27,9 +27,9 @@ endif()
 add_library(patrol_class src/patrol_class.cpp)
 add_library(direction_service_class src/direction_service_class.cpp)
 add_library(test_service_class src/test_service_class.cpp)
-# add_library(patrol_with_service_class src/patrol_with_service_class.cpp)
+add_library(patrol_with_service_class src/patrol_with_service_class.cpp)
 
-install(TARGETS direction_service_class
+install(TARGETS patrol_class direction_service_class test_service_class patrol_with_service_class
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -39,13 +39,13 @@ install(TARGETS direction_service_class
 ament_target_dependencies(patrol_class rclcpp sensor_msgs geometry_msgs)
 ament_target_dependencies(direction_service_class rclcpp sensor_msgs geometry_msgs)
 ament_target_dependencies(test_service_class rclcpp sensor_msgs geometry_msgs)
-# ament_target_dependencies(patrol_with_service_class rclcpp sensor_msgs geometry_msgs)
+ament_target_dependencies(patrol_with_service_class rclcpp sensor_msgs geometry_msgs)
 
 # Executables
 add_executable(patrol src/patrol.cpp)
 add_executable(direction_service src/direction_service.cpp)
 add_executable(test_service src/test_service.cpp)
-# add_executable(patrol_with_service src/patrol_with_service.cpp)
+add_executable(patrol_with_service src/patrol_with_service.cpp)
 
 # ament_target_dependencies(test_service rclcpp sensor_msgs)
 # install(TARGETS patrol direction_service test_service DESTINATION lib/${PROJECT_NAME})
@@ -55,13 +55,19 @@ add_executable(test_service src/test_service.cpp)
 target_link_libraries(patrol patrol_class)
 target_link_libraries(direction_service direction_service_class)
 target_link_libraries(test_service test_service_class)
-# target_link_libraries(patrol_with_service patrol_with_service_class)
+target_link_libraries(patrol_with_service patrol_with_service_class)
 
 # Generate interfaces for the .srv file
 rosidl_generate_interfaces(${PROJECT_NAME} "srv/GetDirection.srv" DEPENDENCIES sensor_msgs)
 rosidl_get_typesupport_target(typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(direction_service_class ${typesupport_target})
 target_link_libraries(test_service_class ${typesupport_target})
+target_link_libraries(patrol_with_service_class ${typesupport_target})
+
+# Install additional files
+install(TARGETS patrol direction_service test_service patrol_with_service
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Install additional files
 install(DIRECTORY launch rviz srv

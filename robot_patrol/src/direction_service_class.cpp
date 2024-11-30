@@ -9,13 +9,14 @@ DirectionService::DirectionService() : Node("direction_service_node") {
                     std::placeholders::_1, std::placeholders::_2));
 
   // Node acknowledgement
-  RCLCPP_INFO(this->get_logger(),
-              "The service /direction_service is available for request.");
+  RCLCPP_INFO(this->get_logger(),"Service Server Ready.");
 }
 
 void DirectionService::service_callback(
     const std::shared_ptr<robot_patrol::srv::GetDirection::Request> request,
     const std::shared_ptr<robot_patrol::srv::GetDirection::Response> response) {
+
+  RCLCPP_INFO(this->get_logger(), "Service Requested.");
 
   // Retrieve laser scan data
   const auto& ranges = request->laser_data.ranges;
@@ -39,13 +40,21 @@ void DirectionService::service_callback(
     return;
   }
 
+  // Helper function to compute the sum of a section while skipping invalid rays
+  auto compute_section_sum = [&ranges](size_t start_index, size_t end_index) {
+    double total = 0.0;
+    for (size_t i = start_index; i <= end_index; ++i) {
+      if (std::isfinite(ranges[i])) { // Skip invalid rays
+        total += ranges[i];
+      }
+    }
+    return total;
+  };
+
   // Compute total distances for each section
-  auto total_dist_sec_right = std::accumulate(ranges.begin() + right_start_index,
-                                              ranges.begin() + right_end_index + 1, 0.0);
-  auto total_dist_sec_front = std::accumulate(ranges.begin() + front_start_index,
-                                              ranges.begin() + front_end_index + 1, 0.0);
-  auto total_dist_sec_left = std::accumulate(ranges.begin() + left_start_index,
-                                             ranges.begin() + left_end_index + 1, 0.0);
+  double total_dist_sec_right = compute_section_sum(right_start_index, right_end_index);
+  double total_dist_sec_front = compute_section_sum(front_start_index, front_end_index);
+  double total_dist_sec_left = compute_section_sum(left_start_index, left_end_index);
 
   // Determine the safest direction
   if (total_dist_sec_right > total_dist_sec_front && total_dist_sec_right > total_dist_sec_left) {
@@ -56,9 +65,6 @@ void DirectionService::service_callback(
     response->direction = "left";
   }
 
-  // Log the results
-  RCLCPP_INFO(this->get_logger(),
-              "Distances (Right: %f, Front: %f, Left: %f) -> Direction: %s",
-              total_dist_sec_right, total_dist_sec_front, total_dist_sec_left,
-              response->direction.c_str());
+  RCLCPP_INFO(this->get_logger(), "Service Completed. Direction: %s", response->direction.c_str());
 }
+

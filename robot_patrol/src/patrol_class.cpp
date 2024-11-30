@@ -24,11 +24,11 @@ void Patrol::laserCallback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
     int front_start_index = static_cast<int>((-M_PI / 2 - msg->angle_min) / msg->angle_increment); // -90°
     int front_end_index = static_cast<int>((M_PI / 2 - msg->angle_min) / msg->angle_increment);   // +90°
 
-    // Calculate the indices for the 45° FOV (-15° to +15°)
+    // Calculate the indices for the 45° FOV (-22.5° to +22.5°)
     int FOV_start_index = static_cast<int>((-FOV_ANGLE / 2 - msg->angle_min) / msg->angle_increment); // -22.5°
     int FOV_end_index = static_cast<int>((FOV_ANGLE / 2 - msg->angle_min) / msg->angle_increment);   // +22.5°
 
-    // Find the maximum distance within the 45° FOV
+    // Find the minimum distance within the 45° FOV
     for (int i = FOV_start_index; i <= FOV_end_index; ++i) {
         float distance = msg->ranges[i];
         if (distance < min_distance_in_FOV) {

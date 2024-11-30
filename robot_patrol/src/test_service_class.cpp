@@ -9,7 +9,7 @@ TestService::TestService()
       client_{
           this->create_client<robot_patrol::srv::GetDirection>(kServiceName)},
       timer_{this->create_wall_timer(
-          kWaitTime, std::bind(&TestService::timerCallback, this))} {}
+          kWaitTime, std::bind(&TestService::timerCallback, this))} {RCLCPP_INFO(this->get_logger(),"Service Client Ready.");}
 
 bool TestService::is_service_done() const { return this->service_done_; }
 
@@ -40,9 +40,10 @@ void TestService::timerCallback() {
 
 void TestService::serviceCallback(
     rclcpp::Client<robot_patrol::srv::GetDirection>::SharedFuture future) {
+  RCLCPP_INFO(this->get_logger(),"Service Request.");
   auto status{future.wait_for(kWaitTime)};
   if (status == std::future_status::ready) {
-    RCLCPP_INFO(this->get_logger(), "Result: %s",
+    RCLCPP_INFO(this->get_logger(), "Service Response: %s",
                 future.get()->direction.c_str());
     service_done_ = true;
   } else {

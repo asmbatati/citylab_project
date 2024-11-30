@@ -1,27 +1,12 @@
 #include "robot_patrol/patrol_with_service_class.h"
 #include "rclcpp/rclcpp.hpp"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
 
-    // Create the Patrol node
-    auto node = std::make_shared<Patrol>();
-    RCLCPP_INFO(node->get_logger(), "Node started. Spinning...");
-
-    try {
-        // Spin the node and handle callbacks
-        rclcpp::spin(node);
-    } catch (const std::exception &e) {
-        // Handle any runtime exceptions
-        RCLCPP_ERROR(node->get_logger(), "Exception caught: %s", e.what());
-        RCLCPP_INFO(node->get_logger(), "Stopping the robot due to exception...");
-        node->stop();
-    } catch (...) {
-        RCLCPP_ERROR(node->get_logger(), "Unknown exception caught!");
-        RCLCPP_INFO(node->get_logger(), "Stopping the robot due to unknown exception...");
-        node->stop();
-    }
+    // Create the PatrolWithService node
+    auto node = std::make_shared<PatrolWithService>();
+    rclcpp::spin(node);
 
     rclcpp::shutdown();
     return 0;
