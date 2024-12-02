@@ -5,7 +5,7 @@
   <version>0.0.1</version>
   <description>A package for robot patrol services and utilities.</description>
 
-  <maintainer email="user@todo.todo">user</maintainer>
+  <maintainer email="asmalbatati@hotmail.com">user</maintainer>
   <license>Apache-2.0</license>
 
   <!-- Build tools -->
@@ -16,6 +16,8 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>action_msgs</depend>
 
   <!-- Testing dependencies -->
   <test_depend>ament_lint_auto</test_depend>
