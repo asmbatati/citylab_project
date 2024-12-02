@@ -60,50 +60,67 @@ void GoToPose::Execute(const std::shared_ptr<GoalHandleGoToPose> goalHandle) {
     auto result = std::make_shared<GoToPoseAction::Result>();
     auto twist = geometry_msgs::msg::Twist();
 
-    destinationYawNormalized_ = NormalizeYawRad(CalculateDestinationDirectionAngle());
+    constexpr double fixedLinearSpeed = 0.2; // Fixed linear speed
 
-    rclcpp::Rate loop_rate(5);
-    bool goalReached = false;
-
-    // Rotate to face target
-    while (rclcpp::ok() && !goalReached) {
-        currentYawNormalized_ = NormalizeYawRad(currentPos_.theta);
-        CalculateRemainingAngleToTarget();
-        goalReached = AreAlmostEqual(rotation_, 0, 2);
-        twist.angular.z = goalReached ? 0 : rotation_;
-        cmd_publisher_->publish(twist);
-        feedback->current_pos = currentPos_;
-        goalHandle->publish_feedback(feedback);
-        loop_rate.sleep();
-    }
+    rclcpp::Rate loop_rate(10); // 10 Hz for smooth control
 
     // Move to target
-    goalReached = false;
+    bool goalReached = false;
     while (rclcpp::ok() && !goalReached) {
         currentYawNormalized_ = NormalizeYawRad(currentPos_.theta);
-        goalReached = AreAlmostEqual(DistanceBetweenPoses(), 0, 5);
-        twist.linear.x = goalReached ? 0 : 0.1;
+        destinationYawNormalized_ = NormalizeYawRad(CalculateDestinationDirectionAngle());
+        CalculateRemainingAngleToTarget();
+
+        double distanceToTarget = DistanceBetweenPoses();
+
+        // Check if close enough to the target position
+        if (distanceToTarget < 0.05) { // Threshold for position
+            twist.linear.x = 0.0;
+            twist.angular.z = 0.0;
+            cmd_publisher_->publish(twist);
+            goalReached = true;
+            break;
+        }
+
+        // Set fixed linear speed and compute angular adjustment
+        twist.linear.x = fixedLinearSpeed;
+        twist.angular.z = rotation_; // Adjust orientation towards the target
         cmd_publisher_->publish(twist);
+
+        // Publish feedback
         feedback->current_pos = currentPos_;
         goalHandle->publish_feedback(feedback);
+
         loop_rate.sleep();
     }
 
     // Rotate to align orientation
     goalReached = false;
-    float destinationRadAngle = destinationPos_.theta * (M_PI / 180.0);
-    destinationYawNormalized_ = NormalizeYawRad(destinationRadAngle);
+    float destinationRadAngle = NormalizeYawRad(destinationPos_.theta * (M_PI / 180.0));
     while (rclcpp::ok() && !goalReached) {
         currentYawNormalized_ = NormalizeYawRad(currentPos_.theta);
+        destinationYawNormalized_ = destinationRadAngle;
         CalculateRemainingAngleToTarget();
-        goalReached = AreAlmostEqual(rotation_, 0, 1);
-        twist.angular.z = goalReached ? 0 : rotation_;
+
+        if (std::abs(rotation_) < 0.01) { // Threshold for orientation
+            twist.angular.z = 0.0;
+            cmd_publisher_->publish(twist);
+            goalReached = true;
+            break;
+        }
+
+        twist.linear.x = 0.0; // Stop linear movement during orientation adjustment
+        twist.angular.z = rotation_;
         cmd_publisher_->publish(twist);
+
+        // Publish feedback
         feedback->current_pos = currentPos_;
         goalHandle->publish_feedback(feedback);
+
         loop_rate.sleep();
     }
 
+    // Mark goal as succeeded
     result->status = true;
     goalHandle->succeed(result);
     RCLCPP_INFO(this->get_logger(), "Action Completed");
